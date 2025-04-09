@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
-openai.api_key = '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'
-
+import os
+import openai
+openai.api_key = os.getenv("OPENAI_API_KEY")
 app = Flask(__name__)
 
 # Esta es la ruta que va a recibir el webhook
