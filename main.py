@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 import os
 openai.api_key = os.getenv("OPENAI_API_KEY")
 print("Clave cargada desde variable:", openai.api_key)
+print("Variables de entorno disponibles:", os.environ)
 
 # Aquí debes colocar tu clave API de OpenAI
 
