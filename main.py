@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 
 import os
 openai.api_key = os.environ.get("OPENAI_API_KEY")
+ASSISTANT_ID=os.environ.get("ASSISTANT_ID")
 # openai.api_key = os.getenv("OPENAI_API_KEY")
 print("Clave cargada desde variable:", openai.api_key)
 print("Variables de entorno disponibles:", os.environ)
@@ -11,11 +12,9 @@ print("Variables de entorno disponibles:", os.environ)
 
 app = Flask(__name__)
 
-
 @app.route('/webhook', methods=['POST'])
 def webhook():
     try:
-        # Obtener los datos enviados en el cuerpo de la solicitud
         data = request.get_json()
         print("Datos recibidos:", data)
 
@@ -24,39 +23,57 @@ def webhook():
 
         mensaje_usuario = data['mensaje']
 
-        # Enviar el mensaje a OpenAI y obtener la respuesta
-        respuesta_openai = obtener_respuesta_openai(mensaje_usuario)
+        respuesta = obtener_respuesta_openai(mensaje_usuario)
 
-        # Devolver la respuesta generada por OpenAI
-        return jsonify({'mensaje': respuesta_openai}), 200
+        return jsonify({'mensaje': respuesta}), 200
 
     except Exception as e:
-        # Capturamos cualquier error que ocurra durante el procesamiento del webhook
         print("Error al procesar el webhook:", e)
         return jsonify({'error': 'Error al procesar el webhook', 'details': str(e)}), 500
 
 
-# Función para obtener la respuesta de OpenAI
 def obtener_respuesta_openai(mensaje):
     try:
-        # Solicitar la respuesta de OpenAI utilizando el endpoint chat completions
-        print(f"Enviando solicitud a OpenAI con el mensaje: {mensaje}")
+        # 1. Crear un nuevo hilo
+        thread = openai.beta.threads.create()
 
-        # Usamos el endpoint chat completions para modelos como gpt-3.5-turbo y gpt-4
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # Usa el modelo adecuado (gpt-3.5-turbo o gpt-4)
-            messages=[{"role": "user", "content": mensaje}],  # Usamos el formato de mensajes para el chat
-            max_tokens=150  # Limita el número de tokens en la respuesta
+        # 2. Enviar el mensaje del usuario al hilo
+        openai.beta.threads.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=mensaje
         )
 
-        print(f"Respuesta de OpenAI: {response}")
-        return response['choices'][0]['message']['content'].strip()  # Obtener la respuesta del modelo
+        # 3. Iniciar la ejecución del asistente
+        run = openai.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=ASSISTANT_ID
+        )
+
+        # 4. Esperar a que el asistente termine
+        while True:
+            run_status = openai.beta.threads.runs.retrieve(
+                thread_id=thread.id,
+                run_id=run.id
+            )
+            if run_status.status == "completed":
+                break
+            elif run_status.status == "failed":
+                return "El Assistant falló al procesar el mensaje."
+            time.sleep(1)
+
+        # 5. Obtener la respuesta del asistente
+        messages = openai.beta.threads.messages.list(thread_id=thread.id)
+        for msg in reversed(messages.data):
+            if msg.role == "assistant":
+                return msg.content[0].text.value.strip()
+
+        return "No se encontró respuesta del Assistant."
 
     except Exception as e:
-        # Capturamos cualquier error general
-        print(f"Error general al conectar con OpenAI: {e}")
-        return f"Lo siento, ocurrió un error al procesar tu mensaje: {e}"
+        print(f"Error al usar el Assistant: {e}")
+        return f"Ocurrió un error al procesar tu mensaje: {e}"
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True, port=5000)
