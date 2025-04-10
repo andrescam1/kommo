@@ -6,7 +6,7 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 ASSISTANT_ID=os.environ.get("ASSISTANT_ID")
 # openai.api_key = os.getenv("OPENAI_API_KEY")
 print("Clave cargada desde variable:", openai.api_key)
-print("Variables de entorno disponibles:", os.environ)
+print("Variables de entorno disponibles:",ASSISTANT_ID)
 
 # Aquí debes colocar tu clave API de OpenAI
 
