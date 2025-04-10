@@ -1,6 +1,6 @@
 import openai
 from flask import Flask, request, jsonify
-
+import time
 import os
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 ASSISTANT_ID=os.environ.get("ASSISTANT_ID")
